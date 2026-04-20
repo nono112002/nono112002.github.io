@@ -1,0 +1,14 @@
+[[main]]
+  name = "ブログ"
+  pageRef = "posts"
+  weight = 10
+
+[[main]]
+  name = "プロジェクト"
+  pageRef = "projects"
+  weight = 20
+
+[[main]]
+  name = "プロフィール"
+  pageRef = "about"
+  weight = 30

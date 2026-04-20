@@ -1,0 +1,44 @@
+colorScheme = "fire"
+defaultAppearance = "light"
+autoSwitchAppearance = true
+
+enableSearch = true
+enableCodeCopy = true
+
+[header]
+  layout = "fixed"
+
+[footer]
+  showMenu = true
+  showCopyright = true
+  showThemeAttribution = false
+  showAppearanceSwitcher = true
+  showScrollToTop = true
+
+[homepage]
+  layout = "profile"
+  showRecent = true
+  showRecentItems = 5
+  showMoreLink = true
+  showMoreLinkDest = "/posts/"
+  cardView = true
+
+[article]
+  showDate = true
+  showAuthor = true
+  showHero = true
+  heroStyle = "thumbAndBackground"
+  showBreadcrumbs = true
+  showReadingTime = true
+  showTableOfContents = true
+  showTaxonomies = true
+  showTags = true
+  showWordCount = true
+  showPagination = true
+
+[list]
+  showHero = false
+  showSummary = true
+  showCards = true
+  cardView = true
+  groupByYear = true

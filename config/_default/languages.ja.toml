@@ -1,0 +1,23 @@
+disabled = false
+locale = "ja"
+label = "日本語"
+weight = 1
+title = "野々山 昭太 | ものづくりエンジニア"
+
+[params]
+  displayName = "JA"
+  isoCode = "ja"
+  rtl = false
+  dateFormat = "2006年1月2日"
+  description = "工業系ものづくり屋（機構設計・プロマネ10年）の製作記録。作りたいから作る。設計の意図とプロセスを残していく。"
+
+[params.author]
+  name = "野々山 昭太"
+  email = "nono.workshop@gmail.com"
+  image = "img/avatar.jpg"
+  headline = "機構設計 / プロマネ / ものづくり"
+  bio = "愛知県みよし市在住。工業系ものづくり屋10年。CATIA V5 / SolidWorks / Arduino / Raspi / 3Dプリンタ。前職・現職の実績はNDAで非公開のため、ここで作るものが唯一の公開実績。"
+  links = [
+    { github = "https://github.com/nono112002" },
+    { email = "mailto:nono.workshop@gmail.com" },
+  ]
