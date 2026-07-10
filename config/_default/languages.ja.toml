@@ -14,7 +14,6 @@ title = "野々山 昭太 | ものづくりエンジニア"
 [params.author]
   name = "野々山 昭太"
   email = "nono.workshop@gmail.com"
-  image = "img/avatar.jpg"
   headline = "機構設計 / プロマネ / ものづくり"
   bio = "愛知県みよし市在住。工業系ものづくり屋10年。CATIA V5 / SolidWorks / Arduino / Raspi / 3Dプリンタ。前職・現職の実績はNDAで非公開のため、ここで作るものが唯一の公開実績。"
   links = [
