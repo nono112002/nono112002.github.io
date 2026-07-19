@@ -219,7 +219,7 @@ layout: "simple"
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
-const API_BASE = "http://34.58.138.105/api";
+const API_BASE = "https://34-58-138-105.sslip.io/api";
 
 const ZONE_COLORS = {
   "zone-a": { line: "#6366f1", bg: "rgba(99,102,241,0.1)" },
