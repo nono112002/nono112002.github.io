@@ -199,11 +199,20 @@ layout: "simple"
 
 ---
 
-## エリア別温度推移
+## 日最高温度推移
 
 <div class="chart-container">
-  <h3>日平均温度</h3>
+  <h3>日最高温度（℃）</h3>
   <canvas id="chart-daily"></canvas>
+</div>
+
+---
+
+## 30分間隔 温度推移
+
+<div class="chart-container">
+  <h3>温度推移（30分間隔）</h3>
+  <canvas id="chart-raw"></canvas>
 </div>
 
 ---
@@ -211,8 +220,8 @@ layout: "simple"
 ## CSVダウンロード
 
 <div class="download-section">
-  <button class="btn" onclick="downloadCSV('raw')">生データ (1分間隔)</button>
-  <button class="btn" onclick="downloadCSV('daily')">日平均データ</button>
+  <button class="btn" onclick="downloadCSV('raw')">生データ</button>
+  <button class="btn" onclick="downloadCSV('daily')">日別サマリー</button>
   <button class="btn" onclick="downloadCSV('accumulated')">積算温度データ</button>
 </div>
 
@@ -234,6 +243,7 @@ const ZONE_NAMES = {
 
 let chartAccum = null;
 let chartDaily = null;
+let chartRaw = null;
 
 function getParams() {
   const selZone = document.getElementById("sel-zone");
@@ -260,13 +270,20 @@ async function loadData() {
   document.getElementById("stat-cards").innerHTML = '<div class="loading">読み込み中...</div>';
 
   try {
-    const resp = await fetch(`${API_BASE}/accumulated?${qs}`);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
+    const [accumResp, rawResp] = await Promise.all([
+      fetch(`${API_BASE}/accumulated?${qs}`),
+      fetch(`${API_BASE}/temperature?${qs}`),
+    ]);
+    if (!accumResp.ok) throw new Error(`HTTP ${accumResp.status}`);
+    if (!rawResp.ok) throw new Error(`HTTP ${rawResp.status}`);
 
-    renderStatCards(data, params.zones);
-    renderAccumulatedChart(data, params.zones);
-    renderDailyChart(data, params.zones);
+    const accumData = await accumResp.json();
+    const rawData = await rawResp.json();
+
+    renderStatCards(accumData, params.zones);
+    renderAccumulatedChart(accumData, params.zones);
+    renderDailyChart(accumData, params.zones);
+    renderRawChart(rawData, params.zones);
   } catch (e) {
     document.getElementById("stat-cards").innerHTML =
       `<div class="error-msg">データ取得エラー: ${e.message}<br>サーバーに接続できない可能性があります。</div>`;
@@ -311,7 +328,7 @@ function renderAccumulatedChart(data, zones) {
   chartAccum = new Chart(document.getElementById("chart-accumulated"), {
     type: "line",
     data: { datasets },
-    options: chartOptions("積算温度 (℃・日)"),
+    options: chartOptions("積算温度 (℃・日)", "day"),
   });
 }
 
@@ -319,7 +336,7 @@ function renderDailyChart(data, zones) {
   const datasets = zones.map(z => {
     const points = data
       .filter(d => d.zone === z)
-      .map(d => ({ x: d.date, y: d.daily_avg }));
+      .map(d => ({ x: d.date, y: d.daily_max }));
     return {
       label: ZONE_NAMES[z] || z,
       data: points,
@@ -334,11 +351,35 @@ function renderDailyChart(data, zones) {
   chartDaily = new Chart(document.getElementById("chart-daily"), {
     type: "line",
     data: { datasets },
-    options: chartOptions("日平均温度 (℃)"),
+    options: chartOptions("日最高温度 (℃)", "day"),
   });
 }
 
-function chartOptions(yLabel) {
+function renderRawChart(data, zones) {
+  const datasets = zones.map(z => {
+    const points = data
+      .filter(d => d.zone === z)
+      .map(d => ({ x: d.timestamp, y: d.temp }));
+    return {
+      label: ZONE_NAMES[z] || z,
+      data: points,
+      borderColor: ZONE_COLORS[z]?.line || "#888",
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: false,
+      tension: 0.2,
+    };
+  });
+
+  if (chartRaw) chartRaw.destroy();
+  chartRaw = new Chart(document.getElementById("chart-raw"), {
+    type: "line",
+    data: { datasets },
+    options: chartOptions("温度 (℃)", "hour"),
+  });
+}
+
+function chartOptions(yLabel, timeUnit) {
   const isDark = document.documentElement.classList.contains("dark");
   const gridColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
   const textColor = isDark ? "#e5e5e5" : "#333";
@@ -349,9 +390,12 @@ function chartOptions(yLabel) {
     scales: {
       x: {
         type: "time",
-        time: { unit: "day", tooltipFormat: "yyyy-MM-dd" },
+        time: {
+          unit: timeUnit,
+          tooltipFormat: timeUnit === "hour" ? "yyyy-MM-dd HH:mm" : "yyyy-MM-dd",
+        },
         grid: { color: gridColor },
-        ticks: { color: textColor },
+        ticks: { color: textColor, maxTicksLimit: 20 },
       },
       y: {
         title: { display: true, text: yLabel, color: textColor },
