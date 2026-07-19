@@ -210,8 +210,20 @@ layout: "simple"
 
 ## 30分間隔 温度推移
 
+<div class="dashboard-controls">
+  <div class="control-group">
+    <label>エリア</label>
+    <select id="sel-raw-zone" onchange="loadRawChart()">
+      <option value="all">ALL（全エリア）</option>
+      <option value="zone-a">区A（対照区）</option>
+      <option value="zone-b">区B（標準養生）</option>
+      <option value="zone-c">区C（微生物養生）</option>
+    </select>
+  </div>
+</div>
+
 <div class="chart-container">
-  <h3>温度推移（30分間隔）</h3>
+  <h3>温度推移（30分間隔・全センサー）</h3>
   <canvas id="chart-raw"></canvas>
 </div>
 
@@ -240,6 +252,18 @@ const ZONE_NAMES = {
   "zone-b": "区B（標準養生）",
   "zone-c": "区C（微生物養生）",
 };
+const LABEL_NAMES = {
+  "S1_center_10cm": "中央10cm",
+  "S2_center_25cm": "中央25cm",
+  "S3_center_40cm": "中央40cm",
+  "S4_edge_10cm": "端部10cm",
+  "S5_edge_25cm": "端部25cm",
+  "S6_edge_40cm": "端部40cm",
+  "S7_outdoor": "外気温",
+};
+const LABEL_COLORS = [
+  "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#6366f1", "#a855f7",
+];
 
 let chartAccum = null;
 let chartDaily = null;
@@ -270,23 +294,41 @@ async function loadData() {
   document.getElementById("stat-cards").innerHTML = '<div class="loading">読み込み中...</div>';
 
   try {
-    const [accumResp, rawResp] = await Promise.all([
-      fetch(`${API_BASE}/accumulated?${qs}`),
-      fetch(`${API_BASE}/temperature?${qs}`),
-    ]);
+    const accumResp = await fetch(`${API_BASE}/accumulated?${qs}`);
     if (!accumResp.ok) throw new Error(`HTTP ${accumResp.status}`);
-    if (!rawResp.ok) throw new Error(`HTTP ${rawResp.status}`);
-
     const accumData = await accumResp.json();
-    const rawData = await rawResp.json();
 
     renderStatCards(accumData, params.zones);
     renderAccumulatedChart(accumData, params.zones);
     renderDailyChart(accumData, params.zones);
-    renderRawChart(rawData, params.zones);
   } catch (e) {
     document.getElementById("stat-cards").innerHTML =
       `<div class="error-msg">データ取得エラー: ${e.message}<br>サーバーに接続できない可能性があります。</div>`;
+  }
+  loadRawChart();
+}
+
+async function loadRawChart() {
+  const from = document.getElementById("date-from").value;
+  const to = document.getElementById("date-to").value || new Date().toISOString().slice(0, 10);
+  const rawZone = document.getElementById("sel-raw-zone").value;
+
+  const zones = rawZone === "all"
+    ? ["zone-a", "zone-b", "zone-c"]
+    : [rawZone];
+
+  const q = new URLSearchParams();
+  q.set("zone", zones.join(","));
+  if (from) q.set("from", from);
+  if (to) q.set("to", to);
+
+  try {
+    const resp = await fetch(`${API_BASE}/temperature?${q}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const rawData = await resp.json();
+    renderRawChart(rawData, zones);
+  } catch (e) {
+    console.error("30分間隔データ取得失敗:", e);
   }
 }
 
@@ -356,20 +398,34 @@ function renderDailyChart(data, zones) {
 }
 
 function renderRawChart(data, zones) {
-  const datasets = zones.map(z => {
-    const points = data
-      .filter(d => d.zone === z)
-      .map(d => ({ x: d.timestamp, y: d.temp }));
-    return {
-      label: ZONE_NAMES[z] || z,
-      data: points,
-      borderColor: ZONE_COLORS[z]?.line || "#888",
-      borderWidth: 1.5,
-      pointRadius: 0,
-      fill: false,
-      tension: 0.2,
-    };
-  });
+  const labels = [...new Set(data.map(d => d.label))].sort();
+  const datasets = [];
+
+  for (const z of zones) {
+    labels.forEach((lbl, i) => {
+      const points = data
+        .filter(d => d.zone === z && d.label === lbl)
+        .map(d => ({ x: d.timestamp, y: d.temp }));
+      if (points.length === 0) return;
+
+      const color = LABEL_COLORS[i % LABEL_COLORS.length];
+      const zoneSuffix = zones.length > 1 ? ` [${ZONE_NAMES[z]?.charAt(0) || z}]` : "";
+      const dash = zones.length > 1
+        ? (z === "zone-b" ? [6, 3] : z === "zone-c" ? [2, 2] : [])
+        : [];
+
+      datasets.push({
+        label: `${LABEL_NAMES[lbl] || lbl}${zoneSuffix}`,
+        data: points,
+        borderColor: color,
+        borderWidth: 1.5,
+        borderDash: dash,
+        pointRadius: 0,
+        fill: false,
+        tension: 0.2,
+      });
+    });
+  }
 
   if (chartRaw) chartRaw.destroy();
   chartRaw = new Chart(document.getElementById("chart-raw"), {
