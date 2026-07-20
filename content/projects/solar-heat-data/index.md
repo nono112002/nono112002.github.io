@@ -268,6 +268,7 @@ layout: "simple"
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
 const API_BASE = "https://34-58-138-105.sslip.io/api";
+const DATA_START = "2026-07-19T09:00:00";
 
 const ZONE_NAMES = {
   "zone-a": "区A（標準区）",
@@ -335,7 +336,8 @@ async function loadRawChart() {
 
   const q = new URLSearchParams();
   q.set("zone", "zone-a,zone-b,zone-c");
-  if (from) q.set("from", from);
+  const effectiveFrom = (!from || from < DATA_START) ? DATA_START : from;
+  q.set("from", effectiveFrom);
   q.set("to", to);
 
   try {
@@ -517,7 +519,8 @@ function downloadCSV(type) {
   const zones = getRawZones().join(",");
   const q = new URLSearchParams();
   q.set("zone", zones || "zone-a,zone-b,zone-c");
-  if (from) q.set("from", from);
+  const effectiveFrom = (!from || from < DATA_START) ? DATA_START : from;
+  q.set("from", effectiveFrom);
   q.set("to", to);
   q.set("type", type);
   window.open(`${API_BASE}/csv?${q}`, "_blank");
