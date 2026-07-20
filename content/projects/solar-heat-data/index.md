@@ -179,9 +179,9 @@ layout: "simple"
   <div class="control-group">
     <label>エリア</label>
     <select id="sel-zone" multiple size="3">
-      <option value="zone-a" selected>区A（対照区）</option>
-      <option value="zone-b" selected>区B（標準養生）</option>
-      <option value="zone-c" selected>区C（微生物養生）</option>
+      <option value="zone-a" selected>区A（標準区）</option>
+      <option value="zone-b" selected>区B（対照・菌なし）</option>
+      <option value="zone-c" selected>区C（対照・ビニールなし）</option>
     </select>
   </div>
   <div class="control-group">
@@ -247,9 +247,9 @@ layout: "simple"
 </div>
 
 <div class="zone-toggles" id="raw-zone-toggles">
-  <button class="zone-toggle active" data-zone="zone-a" style="border-color:#6366f1;background:#6366f1" onclick="toggleRawZone(this)">区A（対照区）</button>
-  <button class="zone-toggle active" data-zone="zone-b" style="border-color:#f59e0b;background:#f59e0b" onclick="toggleRawZone(this)">区B（標準養生）</button>
-  <button class="zone-toggle active" data-zone="zone-c" style="border-color:#10b981;background:#10b981" onclick="toggleRawZone(this)">区C（微生物養生）</button>
+  <button class="zone-toggle active" data-zone="zone-a" style="border-color:#6366f1;background:#6366f1" onclick="toggleRawZone(this)">区A（標準区）</button>
+  <button class="zone-toggle active" data-zone="zone-b" style="border-color:#f59e0b;background:#f59e0b" onclick="toggleRawZone(this)">区B（対照・菌なし）</button>
+  <button class="zone-toggle active" data-zone="zone-c" style="border-color:#10b981;background:#10b981" onclick="toggleRawZone(this)">区C（対照・ビニールなし）</button>
 </div>
 
 <div class="chart-container">
@@ -278,9 +278,9 @@ const ZONE_COLORS = {
   "zone-c": { line: "#10b981", bg: "rgba(16,185,129,0.1)" },
 };
 const ZONE_NAMES = {
-  "zone-a": "区A（対照区）",
-  "zone-b": "区B（標準養生）",
-  "zone-c": "区C（微生物養生）",
+  "zone-a": "区A（標準区）",
+  "zone-b": "区B（対照・菌なし）",
+  "zone-c": "区C（対照・ビニールなし）",
 };
 const LABEL_NAMES = {
   "S1_center_10cm": "中央10cm",
