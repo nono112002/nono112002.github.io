@@ -217,63 +217,6 @@ layout: "simple"
 }
 </style>
 
-## 積算温度
-
-<div class="dashboard-controls" id="controls">
-  <div class="control-group">
-    <label>エリア</label>
-    <select id="sel-zone" multiple size="3">
-      <option value="zone-a" selected>区A（標準区）</option>
-      <option value="zone-b" selected>区B（対照・菌なし）</option>
-      <option value="zone-c" selected>区C（対照・ビニールなし）</option>
-    </select>
-  </div>
-  <div class="control-group">
-    <label>深さ・位置</label>
-    <select id="sel-label">
-      <option value="S1_center_10cm">中央 10cm</option>
-      <option value="S2_center_25cm">中央 25cm</option>
-      <option value="S3_center_40cm">中央 40cm</option>
-      <option value="S4_edge_10cm">エッジ 10cm</option>
-      <option value="S5_edge_25cm">エッジ 25cm</option>
-      <option value="S6_edge_40cm">エッジ 40cm</option>
-      <option value="S7_outdoor">外気温</option>
-    </select>
-  </div>
-  <div class="control-group">
-    <label>開始日</label>
-    <input type="date" id="date-from" value="2026-07-01">
-  </div>
-  <div class="control-group">
-    <label>終了日</label>
-    <input type="date" id="date-to">
-  </div>
-  <div class="control-group">
-    <label>&nbsp;</label>
-    <button class="btn btn-primary" onclick="loadData()">表示更新</button>
-  </div>
-</div>
-
-<div class="stat-cards" id="stat-cards">
-  <div class="loading">データ読み込み中...</div>
-</div>
-
-<div class="chart-container">
-  <h3>積算温度（℃・日）</h3>
-  <canvas id="chart-accumulated"></canvas>
-</div>
-
----
-
-## 日最高温度推移
-
-<div class="chart-container">
-  <h3>日最高温度（℃）</h3>
-  <canvas id="chart-daily"></canvas>
-</div>
-
----
-
 ## 30分間隔 温度推移
 
 <div class="dashboard-controls">
@@ -326,11 +269,6 @@ layout: "simple"
 <script>
 const API_BASE = "https://34-58-138-105.sslip.io/api";
 
-const ZONE_COLORS = {
-  "zone-a": { line: "#6366f1", bg: "rgba(99,102,241,0.1)" },
-  "zone-b": { line: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
-  "zone-c": { line: "#10b981", bg: "rgba(16,185,129,0.1)" },
-};
 const ZONE_NAMES = {
   "zone-a": "区A（標準区）",
   "zone-b": "区B（対照・菌なし）",
@@ -349,48 +287,7 @@ const LABEL_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#6366f1", "#a855f7",
 ];
 
-let chartAccum = null;
-let chartDaily = null;
 let chartRaw = null;
-
-function getParams() {
-  const selZone = document.getElementById("sel-zone");
-  const zones = Array.from(selZone.selectedOptions).map(o => o.value);
-  const label = document.getElementById("sel-label").value;
-  const from = document.getElementById("date-from").value;
-  const to = document.getElementById("date-to").value || new Date().toISOString().slice(0, 10);
-  return { zones, label, from, to };
-}
-
-function buildQuery(params) {
-  const q = new URLSearchParams();
-  q.set("zone", params.zones.join(","));
-  q.set("label", params.label);
-  if (params.from) q.set("from", params.from);
-  if (params.to) q.set("to", params.to);
-  return q.toString();
-}
-
-async function loadData() {
-  const params = getParams();
-  const qs = buildQuery(params);
-
-  document.getElementById("stat-cards").innerHTML = '<div class="loading">読み込み中...</div>';
-
-  try {
-    const accumResp = await fetch(`${API_BASE}/accumulated?${qs}`);
-    if (!accumResp.ok) throw new Error(`HTTP ${accumResp.status}`);
-    const accumData = await accumResp.json();
-
-    renderStatCards(accumData, params.zones);
-    renderAccumulatedChart(accumData, params.zones);
-    renderDailyChart(accumData, params.zones);
-  } catch (e) {
-    document.getElementById("stat-cards").innerHTML =
-      `<div class="error-msg">データ取得エラー: ${e.message}<br>サーバーに接続できない可能性があります。</div>`;
-  }
-  loadRawChart();
-}
 
 let rawDataCache = null;
 
@@ -485,71 +382,6 @@ function renderRawStats(data, zones) {
       </div>`;
   }
   container.innerHTML = html;
-}
-
-function renderStatCards(data, zones) {
-  const latest = {};
-  for (const row of data) {
-    latest[row.zone] = row;
-  }
-
-  let html = "";
-  for (const z of zones) {
-    const row = latest[z];
-    if (!row) continue;
-    html += `
-      <div class="stat-card">
-        <div class="zone-name">${ZONE_NAMES[z] || z}</div>
-        <div class="value">${row.accumulated.toFixed(1)}<span class="unit"> ℃・日</span></div>
-      </div>`;
-  }
-  document.getElementById("stat-cards").innerHTML = html || '<div class="loading">データなし</div>';
-}
-
-function renderAccumulatedChart(data, zones) {
-  const datasets = zones.map(z => {
-    const points = data
-      .filter(d => d.zone === z)
-      .map(d => ({ x: d.date, y: d.accumulated }));
-    return {
-      label: ZONE_NAMES[z] || z,
-      data: points,
-      borderColor: ZONE_COLORS[z]?.line || "#888",
-      backgroundColor: ZONE_COLORS[z]?.bg || "rgba(0,0,0,0.05)",
-      fill: true,
-      tension: 0.3,
-    };
-  });
-
-  if (chartAccum) chartAccum.destroy();
-  chartAccum = new Chart(document.getElementById("chart-accumulated"), {
-    type: "line",
-    data: { datasets },
-    options: chartOptions("積算温度 (℃・日)", "day"),
-  });
-}
-
-function renderDailyChart(data, zones) {
-  const datasets = zones.map(z => {
-    const points = data
-      .filter(d => d.zone === z)
-      .map(d => ({ x: d.date, y: d.daily_max }));
-    return {
-      label: ZONE_NAMES[z] || z,
-      data: points,
-      borderColor: ZONE_COLORS[z]?.line || "#888",
-      backgroundColor: ZONE_COLORS[z]?.bg || "rgba(0,0,0,0.05)",
-      fill: false,
-      tension: 0.3,
-    };
-  });
-
-  if (chartDaily) chartDaily.destroy();
-  chartDaily = new Chart(document.getElementById("chart-daily"), {
-    type: "line",
-    data: { datasets },
-    options: chartOptions("日最高温度 (℃)", "day"),
-  });
 }
 
 function renderRawChart(data, zones) {
@@ -681,12 +513,16 @@ function chartOptions(yLabel, timeUnit) {
 }
 
 function downloadCSV(type) {
-  const params = getParams();
-  const qs = buildQuery(params);
-  window.open(`${API_BASE}/csv?${qs}&type=${type}`, "_blank");
+  const { from, to } = getRawDateRange();
+  const zones = getRawZones().join(",");
+  const q = new URLSearchParams();
+  q.set("zone", zones || "zone-a,zone-b,zone-c");
+  if (from) q.set("from", from);
+  q.set("to", to);
+  q.set("type", type);
+  window.open(`${API_BASE}/csv?${q}`, "_blank");
 }
 
 // 初期表示
-document.getElementById("date-to").value = new Date().toISOString().slice(0, 10);
-loadData();
+loadRawChart();
 </script>
