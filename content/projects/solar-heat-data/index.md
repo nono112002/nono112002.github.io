@@ -183,6 +183,38 @@ layout: "simple"
   background: transparent !important;
   opacity: 0.5;
 }
+.custom-legend {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+.custom-legend .legend-zone {
+  margin-bottom: 0.25rem;
+}
+.custom-legend .zone-label {
+  font-weight: 700;
+  margin-right: 0.5rem;
+}
+.custom-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+.custom-legend .legend-item.hidden {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+.custom-legend .legend-line {
+  display: inline-block;
+  width: 20px;
+  height: 0;
+  border-top: 2.5px solid;
+  vertical-align: middle;
+}
 </style>
 
 ## 積算温度
@@ -276,6 +308,7 @@ layout: "simple"
 <div class="chart-container">
   <h3>温度推移（30分間隔・全センサー）</h3>
   <canvas id="chart-raw"></canvas>
+  <div id="raw-legend" class="custom-legend"></div>
 </div>
 
 ---
@@ -531,13 +564,10 @@ function renderRawChart(data, zones) {
       if (points.length === 0) return;
 
       const color = LABEL_COLORS[i % LABEL_COLORS.length];
-      const zoneSuffix = zones.length > 1 ? ` [${ZONE_NAMES[z]?.charAt(0) || z}]` : "";
-      const dash = zones.length > 1
-        ? (z === "zone-b" ? [6, 3] : z === "zone-c" ? [2, 2] : [])
-        : [];
+      const dash = z === "zone-b" ? [6, 3] : z === "zone-c" ? [2, 2] : [];
 
       datasets.push({
-        label: `${LABEL_NAMES[lbl] || lbl}${zoneSuffix}`,
+        label: `${LABEL_NAMES[lbl] || lbl}`,
         data: points,
         borderColor: color,
         borderWidth: 1.5,
@@ -545,16 +575,63 @@ function renderRawChart(data, zones) {
         pointRadius: 0,
         fill: false,
         tension: 0.2,
+        _zone: z,
+        _label: lbl,
       });
     });
   }
 
   if (chartRaw) chartRaw.destroy();
+  const opts = chartOptions("温度 (℃)", "hour");
+  opts.plugins.legend = { display: false };
   chartRaw = new Chart(document.getElementById("chart-raw"), {
     type: "line",
     data: { datasets },
-    options: chartOptions("温度 (℃)", "hour"),
+    options: opts,
   });
+  renderRawLegend(datasets, zones);
+}
+
+function renderRawLegend(datasets, zones) {
+  const el = document.getElementById("raw-legend");
+  el.innerHTML = "";
+  for (const z of zones) {
+    const row = document.createElement("div");
+    row.className = "legend-zone";
+    const zLabel = document.createElement("span");
+    zLabel.className = "zone-label";
+    zLabel.textContent = (ZONE_NAMES[z] || z) + "：";
+    row.appendChild(zLabel);
+
+    datasets.forEach((ds, idx) => {
+      if (ds._zone !== z) return;
+      const item = document.createElement("span");
+      item.className = "legend-item";
+      item.dataset.index = idx;
+
+      const line = document.createElement("span");
+      line.className = "legend-line";
+      line.style.borderColor = ds.borderColor;
+      if (ds.borderDash && ds.borderDash.length) {
+        line.style.borderTopStyle = "dashed";
+      }
+      item.appendChild(line);
+
+      const text = document.createElement("span");
+      text.textContent = LABEL_NAMES[ds._label] || ds._label;
+      item.appendChild(text);
+
+      item.onclick = () => {
+        const i = parseInt(item.dataset.index);
+        const meta = chartRaw.getDatasetMeta(i);
+        meta.hidden = !meta.hidden;
+        item.classList.toggle("hidden", meta.hidden);
+        chartRaw.update();
+      };
+      row.appendChild(item);
+    });
+    el.appendChild(row);
+  }
 }
 
 function chartOptions(yLabel, timeUnit) {
