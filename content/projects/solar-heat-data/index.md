@@ -149,6 +149,28 @@ layout: "simple"
 .dark .download-section {
   border-top-color: var(--color-neutral-700);
 }
+.zone-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.zone-toggle {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 2px solid;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+.zone-toggle.active {
+  color: #fff;
+}
+.zone-toggle:not(.active) {
+  background: transparent !important;
+  opacity: 0.5;
+}
 </style>
 
 ## 積算温度
@@ -212,14 +234,22 @@ layout: "simple"
 
 <div class="dashboard-controls">
   <div class="control-group">
-    <label>エリア</label>
-    <select id="sel-raw-zone" onchange="loadRawChart()">
-      <option value="all">ALL（全エリア）</option>
-      <option value="zone-a">区A（対照区）</option>
-      <option value="zone-b">区B（標準養生）</option>
-      <option value="zone-c">区C（微生物養生）</option>
+    <label>表示期間</label>
+    <select id="sel-raw-period" onchange="loadRawChart()">
+      <option value="1">過去1日</option>
+      <option value="3" selected>過去3日</option>
+      <option value="7">過去7日</option>
+      <option value="14">過去14日</option>
+      <option value="30">過去30日</option>
+      <option value="all">全期間</option>
     </select>
   </div>
+</div>
+
+<div class="zone-toggles" id="raw-zone-toggles">
+  <button class="zone-toggle active" data-zone="zone-a" style="border-color:#6366f1;background:#6366f1" onclick="toggleRawZone(this)">区A（対照区）</button>
+  <button class="zone-toggle active" data-zone="zone-b" style="border-color:#f59e0b;background:#f59e0b" onclick="toggleRawZone(this)">区B（標準養生）</button>
+  <button class="zone-toggle active" data-zone="zone-c" style="border-color:#10b981;background:#10b981" onclick="toggleRawZone(this)">区C（微生物養生）</button>
 </div>
 
 <div class="chart-container">
@@ -308,25 +338,41 @@ async function loadData() {
   loadRawChart();
 }
 
-async function loadRawChart() {
-  const from = document.getElementById("date-from").value;
-  const to = document.getElementById("date-to").value || new Date().toISOString().slice(0, 10);
-  const rawZone = document.getElementById("sel-raw-zone").value;
+let rawDataCache = null;
 
-  const zones = rawZone === "all"
-    ? ["zone-a", "zone-b", "zone-c"]
-    : [rawZone];
+function getRawZones() {
+  return Array.from(document.querySelectorAll("#raw-zone-toggles .zone-toggle.active"))
+    .map(b => b.dataset.zone);
+}
+
+function toggleRawZone(btn) {
+  btn.classList.toggle("active");
+  if (rawDataCache) {
+    renderRawChart(rawDataCache, getRawZones());
+  }
+}
+
+async function loadRawChart() {
+  const period = document.getElementById("sel-raw-period").value;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const to = tomorrow.toISOString().slice(0, 10);
 
   const q = new URLSearchParams();
-  q.set("zone", zones.join(","));
-  if (from) q.set("from", from);
-  if (to) q.set("to", to);
+  q.set("zone", "zone-a,zone-b,zone-c");
+  q.set("to", to);
+
+  if (period !== "all") {
+    const from = new Date();
+    from.setDate(from.getDate() - parseInt(period));
+    q.set("from", from.toISOString().slice(0, 10));
+  }
 
   try {
     const resp = await fetch(`${API_BASE}/temperature?${q}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const rawData = await resp.json();
-    renderRawChart(rawData, zones);
+    rawDataCache = await resp.json();
+    renderRawChart(rawDataCache, getRawZones());
   } catch (e) {
     console.error("30分間隔データ取得失敗:", e);
   }
@@ -440,18 +486,33 @@ function chartOptions(yLabel, timeUnit) {
   const gridColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
   const textColor = isDark ? "#e5e5e5" : "#333";
 
+  const timeConfig = timeUnit === "hour"
+    ? {
+        unit: "hour",
+        stepSize: 6,
+        displayFormats: { hour: "M/d HH:mm", day: "M/d" },
+        tooltipFormat: "yyyy-MM-dd HH:mm",
+      }
+    : {
+        unit: "day",
+        displayFormats: { day: "M/d" },
+        tooltipFormat: "yyyy-MM-dd",
+      };
+
   return {
     responsive: true,
     interaction: { mode: "index", intersect: false },
     scales: {
       x: {
         type: "time",
-        time: {
-          unit: timeUnit,
-          tooltipFormat: timeUnit === "hour" ? "yyyy-MM-dd HH:mm" : "yyyy-MM-dd",
-        },
+        time: timeConfig,
         grid: { color: gridColor },
-        ticks: { color: textColor, maxTicksLimit: 20 },
+        ticks: {
+          color: textColor,
+          maxTicksLimit: 24,
+          maxRotation: 45,
+          minRotation: 0,
+        },
       },
       y: {
         title: { display: true, text: yLabel, color: textColor },
@@ -460,7 +521,7 @@ function chartOptions(yLabel, timeUnit) {
       },
     },
     plugins: {
-      legend: { labels: { color: textColor } },
+      legend: { labels: { color: textColor, boxWidth: 20, font: { size: 11 } } },
       tooltip: { mode: "index" },
     },
   };
