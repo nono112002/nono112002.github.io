@@ -72,6 +72,18 @@ layout: "simple"
   font-size: 0.8rem;
   opacity: 0.6;
 }
+.stat-card .stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+.stat-card .stat-label {
+  opacity: 0.6;
+}
+.stat-card .stat-val {
+  font-weight: 600;
+}
 .chart-container {
   position: relative;
   width: 100%;
@@ -235,14 +247,21 @@ layout: "simple"
 <div class="dashboard-controls">
   <div class="control-group">
     <label>表示期間</label>
-    <select id="sel-raw-period" onchange="loadRawChart()">
+    <select id="sel-raw-period" onchange="onRawPeriodChange()">
       <option value="1">過去1日</option>
       <option value="3" selected>過去3日</option>
-      <option value="7">過去7日</option>
-      <option value="14">過去14日</option>
-      <option value="30">過去30日</option>
-      <option value="all">全期間</option>
+      <option value="7">過去1週間</option>
+      <option value="30">過去1か月</option>
+      <option value="custom">カレンダー入力</option>
     </select>
+  </div>
+  <div class="control-group" id="raw-date-from-group" style="display:none">
+    <label>開始日</label>
+    <input type="date" id="raw-date-from" onchange="loadRawChart()">
+  </div>
+  <div class="control-group" id="raw-date-to-group" style="display:none">
+    <label>終了日</label>
+    <input type="date" id="raw-date-to" onchange="loadRawChart()">
   </div>
 </div>
 
@@ -251,6 +270,8 @@ layout: "simple"
   <button class="zone-toggle active" data-zone="zone-b" style="border-color:#f59e0b;background:#f59e0b" onclick="toggleRawZone(this)">区B（対照・菌なし）</button>
   <button class="zone-toggle active" data-zone="zone-c" style="border-color:#10b981;background:#10b981" onclick="toggleRawZone(this)">区C（対照・ビニールなし）</button>
 </div>
+
+<div class="stat-cards" id="raw-stat-cards"></div>
 
 <div class="chart-container">
   <h3>温度推移（30分間隔・全センサー）</h3>
@@ -348,34 +369,89 @@ function getRawZones() {
 function toggleRawZone(btn) {
   btn.classList.toggle("active");
   if (rawDataCache) {
-    renderRawChart(rawDataCache, getRawZones());
+    const zones = getRawZones();
+    renderRawChart(rawDataCache, zones);
+    renderRawStats(rawDataCache, zones);
   }
 }
 
-async function loadRawChart() {
+function onRawPeriodChange() {
+  const period = document.getElementById("sel-raw-period").value;
+  const showCustom = period === "custom";
+  document.getElementById("raw-date-from-group").style.display = showCustom ? "" : "none";
+  document.getElementById("raw-date-to-group").style.display = showCustom ? "" : "none";
+  if (!showCustom) loadRawChart();
+}
+
+function getRawDateRange() {
   const period = document.getElementById("sel-raw-period").value;
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   const to = tomorrow.toISOString().slice(0, 10);
 
+  if (period === "custom") {
+    return {
+      from: document.getElementById("raw-date-from").value || "",
+      to: document.getElementById("raw-date-to").value || to,
+    };
+  }
+  const from = new Date();
+  from.setDate(from.getDate() - parseInt(period));
+  return { from: from.toISOString().slice(0, 10), to };
+}
+
+async function loadRawChart() {
+  const { from, to } = getRawDateRange();
+
   const q = new URLSearchParams();
   q.set("zone", "zone-a,zone-b,zone-c");
+  if (from) q.set("from", from);
   q.set("to", to);
-
-  if (period !== "all") {
-    const from = new Date();
-    from.setDate(from.getDate() - parseInt(period));
-    q.set("from", from.toISOString().slice(0, 10));
-  }
 
   try {
     const resp = await fetch(`${API_BASE}/temperature?${q}`);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     rawDataCache = await resp.json();
-    renderRawChart(rawDataCache, getRawZones());
+    const zones = getRawZones();
+    renderRawChart(rawDataCache, zones);
+    renderRawStats(rawDataCache, zones);
   } catch (e) {
     console.error("30分間隔データ取得失敗:", e);
   }
+}
+
+function renderRawStats(data, zones) {
+  const container = document.getElementById("raw-stat-cards");
+  if (!data || data.length === 0 || zones.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let html = "";
+  for (const z of zones) {
+    const soil = data.filter(d => d.zone === z && d.label !== "S7_outdoor");
+    if (soil.length === 0) continue;
+
+    const temps = soil.map(d => d.temp);
+    const minT = Math.min(...temps);
+    const maxT = Math.max(...temps);
+
+    const dailyMax = {};
+    for (const d of soil) {
+      const day = d.timestamp.slice(0, 10);
+      dailyMax[day] = Math.max(dailyMax[day] || -Infinity, d.temp);
+    }
+    const accum = Object.values(dailyMax).reduce((s, v) => s + v, 0);
+
+    html += `
+      <div class="stat-card">
+        <div class="zone-name">${ZONE_NAMES[z] || z}</div>
+        <div class="value">${accum.toFixed(1)}<span class="unit"> ℃・日</span></div>
+        <div class="stat-row"><span class="stat-label">MIN</span><span class="stat-val">${minT.toFixed(1)} ℃</span></div>
+        <div class="stat-row"><span class="stat-label">MAX</span><span class="stat-val">${maxT.toFixed(1)} ℃</span></div>
+      </div>`;
+  }
+  container.innerHTML = html;
 }
 
 function renderStatCards(data, zones) {
