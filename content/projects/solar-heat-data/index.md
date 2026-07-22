@@ -268,7 +268,7 @@ layout: "simple"
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script>
 const API_BASE = "https://34-58-138-105.sslip.io/api";
-const DATA_START = "2026-07-19T09:00:00";
+const DATA_START = "2026-07-19T15:00:00";
 
 const ZONE_NAMES = {
   "zone-a": "区A（標準区）",
