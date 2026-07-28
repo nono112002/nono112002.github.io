@@ -275,19 +275,28 @@ const ZONE_NAMES = {
   "zone-b": "区B（対照・菌なし）",
   "zone-c": "区C（対照・ビニールなし）",
 };
+// DBのラベルは S1_center_10cm のままだが、実際の埋設深さは15cm。表示のみ補正する。
 const LABEL_NAMES = {
-  "S1_center_15cm": "中央15cm",
+  "S1_center_10cm": "中央15cm",
   "S2_center_25cm": "中央25cm",
   "S3_center_40cm": "中央40cm",
-  "S4_edge_15cm": "端部15cm",
+  "S4_edge_10cm": "端部15cm",
   "S5_edge_25cm": "端部25cm",
   "S6_edge_40cm": "端部40cm",
   "S7_outdoor": "外気温",
-  "S7_soil_5cm": "5cm（参考）",
 };
 
+// 区A・区Bの S7 は 2026-07-28 08:50 に外気温から土壌5cm（BLOF公式の基準深さ）へ差し替え。
+// 途中からの計測のため参考値扱いとし、積算温度の計算には含めない。
+const SOIL_5CM_ZONES = ["zone-a", "zone-b"];
+
+function labelName(label, zone) {
+  if (label === "S7_outdoor" && SOIL_5CM_ZONES.includes(zone)) return "5cm（参考）";
+  return LABEL_NAMES[label] || label;
+}
+
 // 積算温度の対象外（外気温・参考値）
-const NON_SOIL_LABELS = ["S7_outdoor", "S7_soil_5cm"];
+const NON_SOIL_LABELS = ["S7_outdoor"];
 const LABEL_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#6366f1", "#a855f7",
 ];
@@ -405,7 +414,7 @@ function renderRawChart(data, zones) {
       const dash = z === "zone-b" ? [6, 3] : z === "zone-c" ? [2, 2] : [];
 
       datasets.push({
-        label: `${LABEL_NAMES[lbl] || lbl}`,
+        label: labelName(lbl, z),
         data: points,
         borderColor: color,
         borderWidth: 1.5,
@@ -456,7 +465,7 @@ function renderRawLegend(datasets, zones) {
       item.appendChild(line);
 
       const text = document.createElement("span");
-      text.textContent = LABEL_NAMES[ds._label] || ds._label;
+      text.textContent = labelName(ds._label, ds._zone);
       item.appendChild(text);
 
       item.onclick = () => {
