@@ -215,7 +215,81 @@ layout: "simple"
   border-top: 2.5px solid;
   vertical-align: middle;
 }
+
+/* --- 計測システムの稼働状況バナー --- */
+/* Blowfish の --color-* は "245, 245, 244" 形式のRGB三つ組なので rgb() で包む必要がある */
+.system-status {
+  border: 1px solid rgb(var(--color-neutral-200));
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 2rem;
+  background: rgb(var(--color-neutral-100));
+}
+.dark .system-status {
+  background: rgb(var(--color-neutral-800));
+  border-color: rgb(var(--color-neutral-700));
+}
+.system-status.is-ok     { border-left-color: #16a34a; }
+.system-status.is-notice { border-left-color: #d97706; }
+.system-status.is-stale  { border-left-color: #ea580c; }
+.system-status.is-down   { border-left-color: #dc2626; }
+.system-status.is-unknown{ border-left-color: rgb(var(--color-neutral-400)); }
+.system-status .status-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-weight: 700;
+}
+.system-status .status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.is-ok      .status-dot { background: #16a34a; }
+.is-notice  .status-dot { background: #d97706; }
+.is-stale   .status-dot { background: #ea580c; }
+.is-down    .status-dot { background: #dc2626; }
+.is-unknown .status-dot { background: rgb(var(--color-neutral-400)); }
+.system-status .checked-at {
+  font-weight: 400;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-left: auto;
+}
+.system-status .zone-status-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem 1.2rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+}
+.system-status .zone-status {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.system-status .zone-status .zs-name { font-weight: 600; }
+.system-status .zone-status .zs-detail { opacity: 0.7; }
+.system-status .status-notes {
+  margin: 0.6rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
 </style>
+
+<div class="system-status is-unknown" id="system-status">
+  <div class="status-head">
+    <span class="status-dot"></span>
+    <span id="status-title">計測システムの稼働状況を取得中…</span>
+    <span class="checked-at" id="status-checked-at"></span>
+  </div>
+  <div class="zone-status-list" id="status-zones"></div>
+  <ul class="status-notes" id="status-notes" style="display:none"></ul>
+</div>
 
 ## 30分間隔 温度推移
 
@@ -539,6 +613,86 @@ function downloadCSV(type) {
   window.open(`${API_BASE}/csv?${q}`, "_blank");
 }
 
+// --- 計測システムの稼働状況 ---
+// 自宅ラズパイは外部から到達できないため、GCE の API が自分の DB を見て判定した
+// 結果を表示する。ページ側は取得と描画だけを担当する。
+const STATUS_LABELS = {
+  ok:      { title: "計測システム: 正常稼働中", cls: "is-ok" },
+  notice:  { title: "計測システム: 稼働中（注意あり）", cls: "is-notice" },
+  stale:   { title: "計測システム: データ遅延あり", cls: "is-stale" },
+  down:    { title: "計測システム: データ受信が停止しています", cls: "is-down" },
+  unknown: { title: "計測システム: 状態を取得できませんでした", cls: "is-unknown" },
+};
+
+const ZONE_STATUS_TEXT = {
+  ok: "正常", notice: "注意", stale: "遅延", down: "停止",
+};
+
+function renderSystemStatus(health) {
+  const box = document.getElementById("system-status");
+  const overall = (health && health.overall) || "unknown";
+  const meta = STATUS_LABELS[overall] || STATUS_LABELS.unknown;
+
+  box.className = `system-status ${meta.cls}`;
+  document.getElementById("status-title").textContent = meta.title;
+
+  const checkedEl = document.getElementById("status-checked-at");
+  const zonesEl = document.getElementById("status-zones");
+  const notesEl = document.getElementById("status-notes");
+  zonesEl.innerHTML = "";
+  notesEl.innerHTML = "";
+
+  if (!health) {
+    checkedEl.textContent = "";
+    notesEl.style.display = "none";
+    return;
+  }
+
+  checkedEl.textContent = `確認 ${health.checked_at.slice(5, 16).replace("T", " ")}`;
+
+  const allNotes = [];
+  for (const z of health.zones) {
+    const name = ZONE_NAMES[z.zone] || z.zone;
+    const state = ZONE_STATUS_TEXT[z.status] || z.status;
+    const last = z.last_received
+      ? z.last_received.slice(5, 16).replace("T", " ")
+      : "受信なし";
+
+    const row = document.createElement("div");
+    row.className = "zone-status";
+    row.innerHTML =
+      `<span class="zs-name">${name}</span>` +
+      `<span class="zs-detail">${state}／最終 ${last}／センサー ${z.sensors}/${z.expected_sensors}本</span>`;
+    zonesEl.appendChild(row);
+
+    for (const n of z.notes || []) allNotes.push(`${name}: ${n}`);
+  }
+
+  if (allNotes.length) {
+    notesEl.style.display = "";
+    for (const n of allNotes) {
+      const li = document.createElement("li");
+      li.textContent = n;
+      notesEl.appendChild(li);
+    }
+  } else {
+    notesEl.style.display = "none";
+  }
+}
+
+async function loadSystemStatus() {
+  try {
+    const resp = await fetch(`${API_BASE}/health`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    renderSystemStatus(await resp.json());
+  } catch (e) {
+    console.error("health の取得に失敗:", e);
+    renderSystemStatus(null);
+  }
+}
+
 // 初期表示
 loadRawChart();
+loadSystemStatus();
+setInterval(loadSystemStatus, 5 * 60 * 1000);
 </script>
