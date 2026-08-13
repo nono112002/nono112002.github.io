@@ -101,6 +101,12 @@ layout: "simple"
   margin: 0 0 0.75rem;
   font-size: 1rem;
 }
+.chart-container h3 .granularity {
+  font-weight: 400;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-left: 0.5rem;
+}
 .chart-container canvas {
   width: 100% !important;
   max-height: 350px;
@@ -291,7 +297,7 @@ layout: "simple"
   <ul class="status-notes" id="status-notes" style="display:none"></ul>
 </div>
 
-## 30分間隔 温度推移
+## 温度推移グラフ
 
 <div class="dashboard-controls">
   <div class="control-group">
@@ -323,9 +329,48 @@ layout: "simple"
 <div class="stat-cards" id="raw-stat-cards"></div>
 
 <div class="chart-container">
-  <h3>温度推移（30分間隔・全センサー）</h3>
+  <h3>温度推移（全センサー）<span id="raw-granularity" class="granularity"></span></h3>
+  <div class="loading" id="raw-loading">データを取得中…</div>
   <canvas id="chart-raw"></canvas>
   <div id="raw-legend" class="custom-legend"></div>
+</div>
+
+---
+
+## 積算温度
+
+<div class="dashboard-controls">
+  <div class="control-group">
+    <label>表示期間</label>
+    <select id="sel-accum-period" onchange="onAccumPeriodChange()">
+      <option value="all" selected>全期間（計測開始〜現在）</option>
+      <option value="7">過去1週間</option>
+      <option value="30">過去1か月</option>
+      <option value="custom">カレンダー入力</option>
+    </select>
+  </div>
+  <div class="control-group" id="accum-date-from-group" style="display:none">
+    <label>開始日</label>
+    <input type="date" id="accum-date-from" onchange="loadAccumChart()">
+  </div>
+  <div class="control-group" id="accum-date-to-group" style="display:none">
+    <label>終了日</label>
+    <input type="date" id="accum-date-to" onchange="loadAccumChart()">
+  </div>
+</div>
+
+<div class="zone-toggles" id="accum-zone-toggles">
+  <button class="zone-toggle active" data-zone="zone-a" style="border-color:#6366f1;background:#6366f1" onclick="toggleAccumZone(this)">区A（標準区）</button>
+  <button class="zone-toggle active" data-zone="zone-b" style="border-color:#f59e0b;background:#f59e0b" onclick="toggleAccumZone(this)">区B（対照・菌なし）</button>
+  <button class="zone-toggle active" data-zone="zone-c" style="border-color:#10b981;background:#10b981" onclick="toggleAccumZone(this)">区C（対照・ビニールなし）</button>
+</div>
+
+<div class="stat-cards" id="accum-stat-cards"></div>
+
+<div class="chart-container">
+  <h3>積算温度の推移（日最高温度の累積・土壌センサーのみ）</h3>
+  <div class="loading" id="accum-loading">データを取得中…</div>
+  <canvas id="chart-accum"></canvas>
 </div>
 
 ---
@@ -386,11 +431,9 @@ function getRawZones() {
 
 function toggleRawZone(btn) {
   btn.classList.toggle("active");
-  if (rawDataCache) {
-    const zones = getRawZones();
-    renderRawChart(rawDataCache, zones);
-    renderRawStats(rawDataCache, zones);
-  }
+  // 表示中の区だけを取得しているので、トグルのたびに取り直す。
+  // サーバー側にキャッシュがあるので2回目以降は速い。
+  loadRawChart();
 }
 
 function onRawPeriodChange() {
@@ -418,25 +461,74 @@ function getRawDateRange() {
   return { from: from.toISOString().slice(0, 10), to };
 }
 
+// 期間を切り替えると前のリクエストが宙に浮くので、都度中断する。
+let rawAbort = null;
+
+function setLoading(elId, on, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.style.display = on ? "" : "none";
+  if (on && msg) el.textContent = msg;
+}
+
 async function loadRawChart() {
   const { from, to } = getRawDateRange();
 
   const q = new URLSearchParams();
-  q.set("zone", "zone-a,zone-b,zone-c");
+  // 表示中の区だけ取得する。3区ぶん取って表示で絞ると転送量が3倍になる。
+  const zones = getRawZones();
+  if (zones.length === 0) {
+    rawDataCache = [];
+    renderRawChart([], []);
+    renderRawStats([], []);
+    return;
+  }
+  q.set("zone", zones.join(","));
   const effectiveFrom = (!from || from < DATA_START) ? DATA_START : from;
   q.set("from", effectiveFrom);
   q.set("to", to);
 
+  if (rawAbort) rawAbort.abort();
+  rawAbort = new AbortController();
+
+  setLoading("raw-loading", true, "データを取得中…");
   try {
-    const resp = await fetch(`${API_BASE}/temperature?${q}`);
+    const resp = await fetch(`${API_BASE}/temperature?${q}`, { signal: rawAbort.signal });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     rawDataCache = await resp.json();
-    const zones = getRawZones();
     renderRawChart(rawDataCache, zones);
     renderRawStats(rawDataCache, zones);
+    renderRawGranularity(rawDataCache);
+    setLoading("raw-loading", false);
   } catch (e) {
-    console.error("30分間隔データ取得失敗:", e);
+    if (e.name === "AbortError") return;  // 新しい期間の読み込みに置き換わっただけ
+    console.error("温度データ取得失敗:", e);
+    setLoading("raw-loading", true, "データを取得できませんでした");
   }
+}
+
+// 長い期間はサーバー側で時間バケット平均に丸めて返ってくる（min_temp/max_temp
+// が付く）。どの粒度を見ているのか分かるように見出しへ添える。
+function renderRawGranularity(data) {
+  const el = document.getElementById("raw-granularity");
+  if (!el) return;
+  if (!data || data.length === 0) { el.textContent = ""; return; }
+
+  if (data[0].min_temp === undefined) {
+    el.textContent = "／生データ";
+    return;
+  }
+  // 同一系列の連続する2点の間隔からバケット幅を求める
+  const first = data[0];
+  const ts = [];
+  for (const d of data) {
+    if (d.zone === first.zone && d.label === first.label) ts.push(Date.parse(d.timestamp));
+    if (ts.length === 2) break;
+  }
+  if (ts.length < 2) { el.textContent = ""; return; }
+  const min = Math.round((ts[1] - ts[0]) / 60000);
+  const text = min >= 1440 ? `${min / 1440}日` : min >= 60 ? `${min / 60}時間` : `${min}分`;
+  el.textContent = `／${text}ごとの平均`;
 }
 
 function renderRawStats(data, zones) {
@@ -451,14 +543,17 @@ function renderRawStats(data, zones) {
     const soil = data.filter(d => d.zone === z && !NON_SOIL_LABELS.includes(d.label));
     if (soil.length === 0) continue;
 
-    const temps = soil.map(d => d.temp);
-    const minT = Math.min(...temps);
-    const maxT = Math.max(...temps);
-
+    // 集約データでは temp はバケット平均なので、MIN/MAX は min_temp/max_temp
+    // を使う（無ければ生データなので temp そのもの）。
+    let minT = Infinity, maxT = -Infinity;
     const dailyMax = {};
     for (const d of soil) {
+      const lo = d.min_temp !== undefined ? d.min_temp : d.temp;
+      const hi = d.max_temp !== undefined ? d.max_temp : d.temp;
+      if (lo < minT) minT = lo;
+      if (hi > maxT) maxT = hi;
       const day = d.timestamp.slice(0, 10);
-      dailyMax[day] = Math.max(dailyMax[day] || -Infinity, d.temp);
+      dailyMax[day] = Math.max(dailyMax[day] || -Infinity, hi);
     }
     const accum = Object.values(dailyMax).reduce((s, v) => s + v, 0);
 
@@ -477,12 +572,20 @@ function renderRawChart(data, zones) {
   const labels = [...new Set(data.map(d => d.label))].sort();
   const datasets = [];
 
+  // zone×label ごとに filter を回すと系列数ぶん全件走査することになる
+  // （21系列 × 数十万行）。1パスで振り分ける。
+  const byKey = new Map();
+  for (const d of data) {
+    const key = d.zone + " " + d.label;
+    let arr = byKey.get(key);
+    if (!arr) { arr = []; byKey.set(key, arr); }
+    arr.push({ x: d.timestamp, y: d.temp });
+  }
+
   for (const z of zones) {
     labels.forEach((lbl, i) => {
-      const points = data
-        .filter(d => d.zone === z && d.label === lbl)
-        .map(d => ({ x: d.timestamp, y: d.temp }));
-      if (points.length === 0) return;
+      const points = byKey.get(z + " " + lbl);
+      if (!points || points.length === 0) return;
 
       const color = LABEL_COLORS[i % LABEL_COLORS.length];
       const dash = z === "zone-b" ? [6, 3] : z === "zone-c" ? [2, 2] : [];
@@ -495,7 +598,7 @@ function renderRawChart(data, zones) {
         borderDash: dash,
         pointRadius: 0,
         fill: false,
-        tension: 0.2,
+        tension: 0,  // ベジェ補間は点数に比例して重い
         _zone: z,
         _label: lbl,
       });
@@ -555,6 +658,169 @@ function renderRawLegend(datasets, zones) {
   }
 }
 
+// --- 積算温度 ---
+// API の accumulated は zone+label 単位の累積なので、ここでは daily_max を
+// date+zone で最大を取り直し（=その日・その区の土壌センサーの最高温度）、
+// 改めて日ごとに足し上げる。renderRawStats の積算計算と同じ考え方。
+const ZONE_COLORS = {
+  "zone-a": "#6366f1",
+  "zone-b": "#f59e0b",
+  "zone-c": "#10b981",
+};
+
+let chartAccum = null;
+let accumDataCache = null;
+
+function getAccumZones() {
+  return Array.from(document.querySelectorAll("#accum-zone-toggles .zone-toggle.active"))
+    .map(b => b.dataset.zone);
+}
+
+function toggleAccumZone(btn) {
+  btn.classList.toggle("active");
+  if (accumDataCache) {
+    const zones = getAccumZones();
+    renderAccumChart(accumDataCache, zones);
+    renderAccumStats(accumDataCache, zones);
+  }
+}
+
+function onAccumPeriodChange() {
+  const period = document.getElementById("sel-accum-period").value;
+  const showCustom = period === "custom";
+  document.getElementById("accum-date-from-group").style.display = showCustom ? "" : "none";
+  document.getElementById("accum-date-to-group").style.display = showCustom ? "" : "none";
+  if (!showCustom) loadAccumChart();
+}
+
+function getAccumDateRange() {
+  const period = document.getElementById("sel-accum-period").value;
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const to = tomorrow.toISOString().slice(0, 10);
+
+  if (period === "custom") {
+    return {
+      from: document.getElementById("accum-date-from").value || "",
+      to: document.getElementById("accum-date-to").value || to,
+    };
+  }
+  // 全期間（既定）は計測開始日から現在まで
+  if (period === "all") return { from: "", to };
+
+  const from = new Date();
+  from.setDate(from.getDate() - parseInt(period));
+  return { from: from.toISOString().slice(0, 10), to };
+}
+
+let accumAbort = null;
+
+async function loadAccumChart() {
+  const { from, to } = getAccumDateRange();
+
+  const q = new URLSearchParams();
+  // 3区ぶん取っても応答は小さいので、区トグルは取得済みデータの再描画で済ませる。
+  q.set("zone", "zone-a,zone-b,zone-c");
+  // 積算対象外のセンサーは最初から取得しない（サーバー側の走査量が減る）。
+  q.set("label", Object.keys(LABEL_NAMES).filter(l => !NON_SOIL_LABELS.includes(l)).join(","));
+  const effectiveFrom = (!from || from < DATA_START) ? DATA_START : from;
+  q.set("from", effectiveFrom);
+  q.set("to", to);
+
+  if (accumAbort) accumAbort.abort();
+  accumAbort = new AbortController();
+
+  setLoading("accum-loading", true, "データを取得中…");
+  try {
+    const resp = await fetch(`${API_BASE}/accumulated?${q}`, { signal: accumAbort.signal });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    accumDataCache = await resp.json();
+    const zones = getAccumZones();
+    renderAccumChart(accumDataCache, zones);
+    renderAccumStats(accumDataCache, zones);
+    setLoading("accum-loading", false);
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    console.error("積算温度データ取得失敗:", e);
+    setLoading("accum-loading", true, "データを取得できませんでした");
+  }
+}
+
+// 区ごとに { dates: [...], daily: {date: 日最高}, accum: {date: 累積} } を作る。
+// 欠測日で線が切れないよう、日付は返ってきたデータの日付集合を昇順で使う。
+function buildAccumSeries(data, zone) {
+  const soil = data.filter(d => d.zone === zone && !NON_SOIL_LABELS.includes(d.label));
+  if (soil.length === 0) return null;
+
+  const daily = {};
+  for (const d of soil) {
+    daily[d.date] = Math.max(daily[d.date] !== undefined ? daily[d.date] : -Infinity, d.daily_max);
+  }
+  const dates = Object.keys(daily).sort();
+
+  const accum = {};
+  let sum = 0;
+  for (const day of dates) {
+    sum += daily[day];
+    accum[day] = sum;
+  }
+  return { dates, daily, accum };
+}
+
+function renderAccumStats(data, zones) {
+  const container = document.getElementById("accum-stat-cards");
+  if (!data || data.length === 0 || zones.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let html = "";
+  for (const z of zones) {
+    const s = buildAccumSeries(data, z);
+    if (!s) continue;
+
+    const lastDay = s.dates[s.dates.length - 1];
+
+    html += `
+      <div class="stat-card">
+        <div class="zone-name">${ZONE_NAMES[z] || z}</div>
+        <div class="value">${s.accum[lastDay].toFixed(1)}<span class="unit"> ℃・日</span></div>
+        <div class="stat-row"><span class="stat-label">日数</span><span class="stat-val">${s.dates.length} 日</span></div>
+        <div class="stat-row"><span class="stat-label">直近日最高（${lastDay.slice(5)}）</span><span class="stat-val">${s.daily[lastDay].toFixed(1)} ℃</span></div>
+      </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderAccumChart(data, zones) {
+  const datasets = [];
+
+  for (const z of zones) {
+    const s = buildAccumSeries(data, z);
+    if (!s) continue;
+
+    const dash = z === "zone-b" ? [6, 3] : z === "zone-c" ? [2, 2] : [];
+
+    datasets.push({
+      label: ZONE_NAMES[z] || z,
+      data: s.dates.map(day => ({ x: day, y: s.accum[day] })),
+      borderColor: ZONE_COLORS[z],
+      borderWidth: 2,
+      borderDash: dash,
+      pointRadius: 0,
+      fill: false,
+      tension: 0.2,
+    });
+  }
+
+  if (chartAccum) chartAccum.destroy();
+  chartAccum = new Chart(document.getElementById("chart-accum"), {
+    type: "line",
+    data: { datasets },
+    options: chartOptions("積算温度 (℃・日)", "day"),
+  });
+}
+
 function chartOptions(yLabel, timeUnit) {
   const isDark = document.documentElement.classList.contains("dark");
   const gridColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)";
@@ -575,7 +841,13 @@ function chartOptions(yLabel, timeUnit) {
 
   return {
     responsive: true,
-    interaction: { mode: "index", intersect: false },
+    // mode:"index" は全系列の同一インデックスを毎回走査するので、点数の多い
+    // 温度推移グラフでは重い。点数の少ない積算温度グラフだけ index を使う。
+    interaction: timeUnit === "hour"
+      ? { mode: "nearest", axis: "x", intersect: false }
+      : { mode: "index", intersect: false },
+    animation: timeUnit === "hour" ? false : undefined,
+    spanGaps: true,
     scales: {
       x: {
         type: "time",
@@ -693,6 +965,7 @@ async function loadSystemStatus() {
 
 // 初期表示
 loadRawChart();
+loadAccumChart();
 loadSystemStatus();
 setInterval(loadSystemStatus, 5 * 60 * 1000);
 </script>
