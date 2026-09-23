@@ -12,8 +12,3 @@
   name = "プロフィール"
   pageRef = "about"
   weight = 30
-
-[[main]]
-  name = "ライブデータ"
-  url = "/dashboard.html"
-  weight = 40
