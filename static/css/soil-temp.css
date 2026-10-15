@@ -1,0 +1,323 @@
+
+.summary-band {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.summary-band .summary-item {
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgb(var(--color-neutral-100));
+  border: 1px solid rgb(var(--color-neutral-200));
+}
+.dark .summary-band .summary-item {
+  background: rgb(var(--color-neutral-800));
+  border-color: rgb(var(--color-neutral-700));
+}
+.summary-band .k {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 0.25rem;
+}
+.summary-band .v {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.summary-band .v .unit {
+  font-size: 0.8rem;
+  opacity: 0.6;
+  font-weight: 400;
+}
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  padding: 1rem;
+  border-radius: 8px;
+  background: rgb(var(--color-neutral-100));
+  border: 1px solid rgb(var(--color-neutral-200));
+}
+.dark .stat-card {
+  background: rgb(var(--color-neutral-800));
+  border-color: rgb(var(--color-neutral-700));
+}
+.stat-card .zone-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  opacity: 0.6;
+  margin-bottom: 0.25rem;
+}
+.stat-card .value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.stat-card .unit {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+.stat-card .stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+.stat-card .stat-label { opacity: 0.6; }
+.stat-card .stat-val { font-weight: 600; }
+.chart-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 2rem;
+  background: rgb(var(--color-neutral-100));
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid rgb(var(--color-neutral-200));
+}
+.dark .chart-container {
+  background: rgb(var(--color-neutral-800));
+  border-color: rgb(var(--color-neutral-700));
+}
+.chart-container h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+.chart-container h3 .granularity {
+  font-weight: 400;
+  font-size: 0.8rem;
+  opacity: 0.6;
+  margin-left: 0.5rem;
+}
+.chart-container canvas {
+  width: 100% !important;
+  max-height: 350px;
+}
+.loading {
+  text-align: center;
+  padding: 3rem;
+  opacity: 0.6;
+}
+.zone-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+.zone-toggle {
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 2px solid;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+}
+.zone-toggle.active { color: #fff; }
+.zone-toggle:not(.active) {
+  background: transparent !important;
+  opacity: 0.5;
+}
+.custom-legend {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+.custom-legend .legend-zone { margin-bottom: 0.25rem; }
+.custom-legend .zone-label { font-weight: 700; margin-right: 0.5rem; }
+.custom-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-right: 0.75rem;
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.15s;
+}
+.custom-legend .legend-item.hidden {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+.custom-legend .legend-line {
+  display: inline-block;
+  width: 20px;
+  height: 0;
+  border-top: 2.5px solid;
+  vertical-align: middle;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid rgb(var(--color-neutral-300));
+  background: rgb(var(--color-neutral-100));
+  color: rgb(var(--color-neutral-900));
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.dark .btn {
+  border-color: rgb(var(--color-neutral-600));
+  background: rgb(var(--color-neutral-800));
+  color: rgb(var(--color-neutral-100));
+}
+.download-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgb(var(--color-neutral-200));
+}
+.dark .download-section { border-top-color: rgb(var(--color-neutral-700)); }
+
+/* --- 目次ページのカード --- */
+.toc-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+}
+.toc-card {
+  display: block;
+  padding: 1.1rem 1.2rem;
+  border-radius: 8px;
+  background: rgb(var(--color-neutral-100));
+  border: 1px solid rgb(var(--color-neutral-200));
+  text-decoration: none !important;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.toc-card:hover {
+  border-color: rgb(var(--color-primary-400));
+  transform: translateY(-2px);
+}
+.dark .toc-card {
+  background: rgb(var(--color-neutral-800));
+  border-color: rgb(var(--color-neutral-700));
+}
+.toc-card .num {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+}
+.toc-card .t {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0.4rem;
+}
+.toc-card .d {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  opacity: 0.75;
+}
+.toc-group {
+  margin-top: 2rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid rgb(var(--color-neutral-200));
+}
+.dark .toc-group { border-bottom-color: rgb(var(--color-neutral-700)); }
+
+/* --- 本文中の注記ボックス --- */
+.note-box {
+  padding: 0.9rem 1.1rem;
+  border-radius: 8px;
+  border-left: 4px solid rgb(var(--color-primary-400));
+  background: rgb(var(--color-neutral-100));
+  font-size: 0.9rem;
+  line-height: 1.7;
+  margin: 1.5rem 0;
+}
+.dark .note-box { background: rgb(var(--color-neutral-800)); }
+.note-box p:last-child { margin-bottom: 0; }
+
+/* --- 前後ページのナビ --- */
+.page-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgb(var(--color-neutral-200));
+  font-size: 0.9rem;
+}
+.dark .page-nav { border-top-color: rgb(var(--color-neutral-700)); }
+.page-nav a { text-decoration: none; }
+.page-nav .spacer { flex: 1; }
+
+/* --- 総括レポート（1枚もの） --- */
+.report-meta {
+  font-size: 0.8rem;
+  opacity: 0.7;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+.report-foot {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  line-height: 1.6;
+  margin-top: 2rem;
+}
+.report table { font-size: 0.85rem; }
+.report .chart-container canvas { max-height: 260px; }
+
+/* 印刷時は A3 横 2段組に収める */
+@media print {
+  @page { size: A3 landscape; margin: 12mm 14mm; }
+  header, footer, nav, .page-nav, .download-section, #TableOfContents,
+  .zone-toggles, button { display: none !important; }
+  main, article, .prose { max-width: none !important; }
+  body { font-size: 10.5pt; line-height: 1.45; }
+  .report { column-count: 2; column-gap: 12mm; column-rule: 1px solid #ccc; }
+  .report h2 { font-size: 13pt; margin: 0.6em 0 0.3em; break-after: avoid; }
+  .report table { font-size: 8.5pt; break-inside: avoid; }
+  .report hr { display: none; }
+  .report .summary-band {
+    column-span: all;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+    break-inside: avoid;
+  }
+  .report .summary-band .summary-item { padding: 0.5rem 0.7rem; border-color: #bbb; background: #fff; }
+  .report .summary-band .v { font-size: 1.2rem; }
+  .report .chart-container { padding: 0.4rem; border-color: #bbb; background: #fff; break-inside: avoid; }
+  .report .chart-container canvas { max-height: 180px; }
+  .report .note-box { background: #fff; border-left-color: #888; break-inside: avoid; }
+  .report-meta { column-span: all; }
+  .report a { color: inherit; text-decoration: none; }
+}
+
+/* --- レポートの図版 --- */
+.report figure { margin: 1.2rem 0; }
+.report figure img { width: 100%; border-radius: 8px; border: 1px solid rgb(var(--color-neutral-200)); display: block; }
+.dark .report figure img { border-color: rgb(var(--color-neutral-700)); }
+.report figcaption { font-size: 0.78rem; line-height: 1.6; opacity: 0.7; margin-top: 0.4rem; }
+.report .fig-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1.2rem 0;
+}
+.report .fig-row figure { margin: 0; }
+.report .fig-row figure img { aspect-ratio: 4 / 3; object-fit: cover; }
+@media print {
+  .report figure { break-inside: avoid; margin: 0.5rem 0; }
+  .report figure img { border-color: #bbb; border-radius: 4px; }
+  .report figcaption { font-size: 7.5pt; }
+  .report .fig-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .report .fig-row figure img { max-height: 55mm; }
+  .report .fig-wide img { max-height: 70mm; object-fit: contain; }
+}
