@@ -32,7 +32,7 @@ layout: "simple"
 
 ## 前回の反省を、先に設計に入れる
 
-太陽熱養生では、**差が出たあとで「これは処理の差か、区画の差か」と悩みました**（→ [②-2](/projects/soil-temp/solarization-result/#5-ビニールを剥がして分かったこと)）。ビニールを剥がしてから測り続けたのは後付けの救済でした。
+太陽熱養生では、**差が出たあとで「これは処理の差か、区画の差か」と悩みました**（→ [② 太陽熱養生](/projects/soil-temp/solarization/#結果-1地温)）。ビニールを剥がしてから測り続けたのは後付けの救済でした。
 
 今回は差がもっと小さいと予想していました。マルチの色の違いで数℃も動くとは考えにくい。**1℃を切る差を見ることになるなら、測定の誤差構造を先に押さえておかないと何も言えません。**
 
@@ -89,7 +89,7 @@ DS18B20 のカタログ精度は ±0.5℃。今回見ようとしている差と
 ---
 
 <div class="page-nav">
-  <a href="/projects/soil-temp/solarization-report/">← ②-3 養生 / 総括レポート</a>
+  <a href="/projects/soil-temp/solarization/">← ② 太陽熱養生</a>
   <span class="spacer"></span>
   <a href="/projects/soil-temp/mulch-result/">③-2 結果 →</a>
 </div>

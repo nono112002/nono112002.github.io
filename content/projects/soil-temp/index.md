@@ -48,20 +48,10 @@ layout: "simple"
 <div class="toc-group">② 太陽熱養生</div>
 
 <div class="toc-cards">
-  <a class="toc-card" href="/projects/soil-temp/solarization-design/">
-    <div class="num">02-1</div>
-    <div class="t">評価準備 — 何を比べるために、どう埋めたか</div>
-    <div class="d">3つの試験区の設計、センサーの配置、「効いた」と判断する基準の決め方。</div>
-  </a>
-  <a class="toc-card" href="/projects/soil-temp/solarization-result/">
-    <div class="num">02-2</div>
-    <div class="t">結果 — ビニールを剥がして分かったこと</div>
-    <div class="d">養生中の3区の差と、ビニール撤去後に差がどう消えたか。差が土そのものではなく処理によるものだと確かめた話。</div>
-  </a>
-  <a class="toc-card" href="/projects/soil-temp/solarization-report/">
-    <div class="num">02-3</div>
-    <div class="t">総括レポート — 目的・資材・地温・土壌診断を1枚に</div>
-    <div class="d">養生前後のJA土壌診断を加えた総まとめ。pHは目標範囲に入り、ECは倍になり、過剰なリン酸と塩基は持ち越し。</div>
+  <a class="toc-card" href="/projects/soil-temp/solarization/">
+    <div class="num">02</div>
+    <div class="t">太陽熱養生 2026 — 動機・方法・結果を1ページに</div>
+    <div class="d">3区画で27日間。地温は最高49.0℃・40℃以上211時間、効いたのは深さ15cmまで。養生前後のJA土壌診断ではpHが目標範囲に入り、ECが倍になった。</div>
   </a>
 </div>
 

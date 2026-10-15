@@ -133,5 +133,5 @@ DS18B20 は1本のバスに複数ぶら下げられるのが売りで、最初�
 <div class="page-nav">
   <a href="/projects/soil-temp/">← 目次</a>
   <span class="spacer"></span>
-  <a href="/projects/soil-temp/solarization-design/">② 太陽熱養生 / 評価準備 →</a>
+  <a href="/projects/soil-temp/solarization/">② 太陽熱養生 →</a>
 </div>
